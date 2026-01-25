@@ -1,264 +1,197 @@
-from . import Teacher, Room, Group, Course, Cluster, Record
-import copy
-
-def pad_number(num: int) -> str:
-    return f"{num:03d}"
+from . import Teacher, Room, Group, Cluster, Allocation
 
 class Problem:
-    def __init__(self, teachers=None, rooms=None, groups=None, courses=None, clusters=None, records=None):
+    def __init__(
+        self,
+        teachers=None,
+        rooms=None,
+        groups=None,
+        clusters=None,
+        allocations=None
+    ):
         self.teachers = teachers if teachers is not None else {}
-        self.rooms = rooms if rooms is not None else {}
-        self.groups = groups if groups is not None else {}
-        self.courses = courses if courses is not None else {}
+        self.rooms    = rooms    if rooms    is not None else {}
+        self.groups   = groups   if groups   is not None else {}
         self.clusters = clusters if clusters is not None else []
-        self.records = records if records is not None else  []
+        self.allocations = allocations if allocations  is not None else []
 
     def add_teacher(self, teacher: Teacher):
+        if teacher.id in self.teachers:
+            raise ValueError(f"Teachers should have unique ids. Id '{teacher.id}' repeats.")
         self.teachers[teacher.id] = teacher
 
     def add_room(self, room: Room):
+        if room.id in self.rooms:
+            raise ValueError(f"Rooms should have unique ids. Id '{room.id}' repeats.")
         self.rooms[room.id] = room
 
     def add_group(self, group: Group):
+        if group.id in self.groups:
+            raise ValueError(f"Groups should have unique ids. Id '{group.id}' repeats.")
         self.groups[group.id] = group
-
-    def add_course(self, course: Course):
-        self.courses[course.id] = course
     
     def add_cluster(self, cluster: Cluster):
         self.clusters.append(cluster)
 
-    def add_record(self, record: Record):
-        self.records.append(record)
+    def add_allocation(self, allocation: Allocation):
+        # TODO: check if group exists?
+        self.allocations.append(allocation)
 
-    def add_record_and_update_availability(self, record : Record) -> bool:
-        day, start_hour, mask = record.day, record.hour, record.period_mask
-        duration = self.groups[record.group_id].duration
+    def add_allocation_and_update_availability(self, allocation : Allocation) -> bool:
+        day, start_slot, mask = allocation.day, allocation.slot, self.groups[allocation.group_id].occurrence_desc
+        duration = self.groups[allocation.group_id].duration
 
-        for t_id in record.teachers_ids:
-            for h in range(start_hour, start_hour + duration):
+        for t_id in self.groups[allocation.group_id].teacher_ids:
+            for h in range(start_slot, start_slot + duration):
                 if not self.teachers[t_id].book_time_slot(day, h, mask):
                     return False
                 
-        for r_id in record.rooms_ids:
-            for h in range(start_hour, start_hour + duration):
+        for r_id in allocation.room_ids:
+            for h in range(start_slot, start_slot + duration):
                 if not self.rooms[r_id].book_time_slot(day, h, mask):
                     return False
                 
         # I think it is not necessery to update group availability
-        # as we want look at it anymore after adding an record
-        self.records.append(record)
+        # as we want look at it anymore after adding an allocation
+        self.allocations.append(allocation)
         return True
     
-    def check(self, only_records=False):
-        def check_constraints(record: Record, group: Group) :
-            if(msg := self.check_group_availability(record, group)):
+    def check(self, only_allocations=False):
+        def check_constraints(allocation: Allocation, group: Group) :
+            if(msg := self.check_group_availability(allocation, group)):
                 return msg
 
-            if (msg := self.check_teacher_availability(record, group)):
+            if (msg := self.check_teacher_availability(allocation, group)):
                 return msg
 
-            if (msg := self.check_teacher_conflicts(record, group)):
+            if (msg := self.check_teacher_conflicts(allocation, group)):
                 return msg
 
-            if (msg := self.check_room_availability(record, group)):
+            if (msg := self.check_room_availability(allocation, group)):
                 return msg
 
-            if (msg := self.check_room_conflicts(record, group)):
+            if (msg := self.check_room_conflicts(allocation, group)):
                 return msg
 
-            if (msg := self.check_room_labels(record, group)):
+            if (msg := self.check_room_labels(allocation, group)):
                 return msg
 
-            if (msg := self.check_room_capacity(record, group)):
+            if (msg := self.check_room_capacity(allocation, group)):
                 return msg
 
-            if (msg := self.check_cluster_constraints(record, group)):
+            if (msg := self.check_cluster_constraints(allocation, group)):
                 return msg
         
-        if(only_records):
-            for record in self.records:
-                group = self.groups.get(record.group_id, None)
+        if(only_allocations):
+            for allocation in self.allocations:
+                group = self.groups.get(allocation.group_id, None)
 
                 if group == None:
-                    return f"record with group_id {record.group_id} exists, but ther is no group with such id"
-                if (msg := check_constraints(record, group)):
+                    return f"allocation with group_id {allocation.group_id} exists, but ther is no group with such id"
+                if (msg := check_constraints(allocation, group)):
                         return msg
         else:
             for group in self.groups.values():
-                record = None
-                for rec in self.records:
+                allocation = None
+                for rec in self.allocations:
                     if rec.group_id == group.id:
-                        record = rec
-                if not record:
-                    return f"{self.courses[group.course_id].name} group with id={group.id} is not present in solution"
+                        allocation = rec
+                if not allocation:
+                    return f"Group with id={group.id} is not present in solution"
 
-                if (msg := check_constraints(record, group)):
+                if (msg := check_constraints(allocation, group)):
                     return msg
             
         return "0"
 
-    def check_teacher_availability(self, record: Record, group: Group):
+    def check_teacher_availability(self, allocation: Allocation, group: Group):
         """Ensure all teachers are available at the scheduled time."""
-        for teacher_id in record.teachers_ids:
+        for teacher_id in group.teacher_ids:
             teacher = self.teachers[teacher_id]
-            if record.hour not in teacher.availability.hours[record.day]:
-                return f"Teacher {teacher.name} (id={teacher.id}) is not available on {record.day} between {record.hour} and {record.hour + group.duration}"
+            if allocation.slot not in teacher.availability.slots[allocation.day]:
+                return f"Teacher with id={teacher.id} is not available on {allocation.day} between {allocation.slot} and {allocation.slot + group.duration}"
 
-    def check_teacher_conflicts(self, record: Record, group: Group):
+    def check_teacher_conflicts(self, allocation: Allocation, group: Group):
         """Ensure the teacher has no other class at the time"""
-        for teacher_id in record.teachers_ids:
-            for other in self.records:
-                if other.group_id == record.group_id or other.day != record.day:
+        for teacher_id in group.teacher_ids:
+            for other in self.allocations:
+                if other.group_id == allocation.group_id or other.day != allocation.day:
                     continue
 
-                if teacher_id in other.teachers_ids:
-                    if other.hour in range(record.hour, record.hour + group.duration):
-                        if (len(list(set(self.groups[other.group_id].period_mask) & set(self.groups[group.id].period_mask))) > 0 or
-                            not self.groups[other.group_id].period_mask or
-                            not self.groups[group.id].period_mask):
-                            start = min(other.hour, record.hour)
-                            end = max(other.hour + self.groups[other.group_id].duration,
-                                      record.hour + group.duration)
-                            return f"Teacher {self.teachers[teacher_id].name} (id={teacher_id}) has conflicting classes on {record.day} between {start} and {end}"
+                if teacher_id in self.groups[other.group_id].teacher_ids:
+                    if other.slot in range(allocation.slot, allocation.slot + group.duration):
+                        if (len(list(set(self.groups[other.group_id].occurrence_desc) & set(self.groups[group.id].occurrence_desc))) > 0 or
+                            not self.groups[other.group_id].occurrence_desc or
+                            not self.groups[group.id].occurrence_desc):
+                            start = min(other.slot, allocation.slot)
+                            end = max(other.slot + self.groups[other.group_id].duration,
+                                      allocation.slot + group.duration)
+                            return f"Teacher with id={teacher_id} has conflicting classes on {allocation.day} between {start} and {end}"
 
-    def check_room_availability(self, record: Record, group: Group):
-        for room_id in record.rooms_ids:
-            room_avail = self.rooms[room_id].availability.hours[record.day]
-            for hour in range(record.hour, record.hour + group.duration):
-                if hour not in room_avail:
-                    return f"Room with id={room_id} is not available on {record.day} between {record.hour} and {record.hour + group.duration}"
+    def check_room_availability(self, allocation: Allocation, group: Group):
+        for room_id in allocation.room_ids:
+            room_avail = self.rooms[room_id].availability.slots[allocation.day]
+            for slot in range(allocation.slot, allocation.slot + group.duration):
+                if slot not in room_avail:
+                    return f"Room with id={room_id} is not available on {allocation.day} between {allocation.slot} and {allocation.slot + group.duration}"
 
-    def check_room_conflicts(self, record: Record, group: Group):
+    def check_room_conflicts(self, allocation: Allocation, group: Group):
         """Ensure no overlapping use of the same room."""
-        rooms_ids = record.rooms_ids
-        record_rooms = set(rooms_ids)
+        room_ids = allocation.room_ids
+        allocation_rooms = set(room_ids)
 
-        for other in self.records:
-            if other.group_id == record.group_id or other.day != record.day:
+        for other in self.allocations:
+            if other.group_id == allocation.group_id or other.day != allocation.day:
                 continue
 
             # Shared room?
-            shared_rooms = list(record_rooms & set(other.rooms_ids))
+            shared_rooms = list(allocation_rooms & set(other.room_ids))
             if shared_rooms:
                 # Overlapping time?
-                if other.hour in range(record.hour, record.hour + group.duration):
-                    if (len(set(self.groups[other.group_id].period_mask) & set(self.groups[group.id].period_mask)) > 0 or
-                            not self.groups[other.group_id].period_mask or
-                            not self.groups[group.id].period_mask):
+                if other.slot in range(allocation.slot, allocation.slot + group.duration):
+                    if (len(set(self.groups[other.group_id].occurrence_desc) & set(self.groups[group.id].occurrence_desc)) > 0 or
+                            not self.groups[other.group_id].occurrence_desc or
+                            not self.groups[group.id].occurrence_desc):
                         room_ids_str = ", ".join(str(rid) for rid in shared_rooms)
-                        return f"At least two groups (id={group.id}, id={other.group_id}) use room(s) with id={room_ids_str} in the same time on {record.day} between {record.hour} and {record.hour + group.duration}"
+                        return f"At least two groups (id={group.id}, id={other.group_id}) use room(s) with id={room_ids_str} in the same time on {allocation.day} between {allocation.slot} and {allocation.slot + group.duration}"
 
-    def check_room_labels(self, record: Record, group: Group):
+    def check_room_labels(self, allocation: Allocation, group: Group):
         """Ensure assigned rooms have required labels."""
-        for labels in group.labels:
-            if not any(set(labels).issubset(set(self.rooms[room_id].labels)) for room_id in record.rooms_ids):
-                room_labels = [self.rooms[room_id].labels for room_id in record.rooms_ids]
-                return f"{self.courses[group.course_id].name} group with id={group.id} has room(s) with labels={room_labels} but needs labels={group.labels}"
+        for labels_DNF in group.labels:
+            if not any(self.rooms[r_id].satisfies_labels_DNF(labels_DNF) for r_id in allocation.room_ids):
+                room_labels = [self.rooms[r_id].labels for r_id in allocation.room_ids]
+                return f"Group with id={group.id} has room(s) with labels={room_labels} but needs labels={group.labels}"
 
-    def check_room_capacity(self, record: Record, group: Group):
+    def check_room_capacity(self, allocation: Allocation, group: Group):
         """Ensure assigned rooms have enough capacity."""
-        for room_id in record.rooms_ids:
+        for room_id in allocation.room_ids:
             if self.rooms[room_id].capacity < group.capacity:
-                return f"{self.courses[group.course_id].name} group with id={group.id} has capacity={group.capacity} but has assigned room (id={room_id}) with capacity={self.rooms[room_id].capacity}"
+                return f"Group with id={group.id} has capacity={group.capacity} but has assigned room (id={room_id}) with capacity={self.rooms[room_id].capacity}"
 
-    def check_cluster_constraints(self, record: Record, group: Group):
-        """Ensure clusters meet day/hour range constraints."""
-        def is_cluster_satisfied(cluster: list[int], triples: list[tuple]):
-            # Sort in descending order to use larger blocks first
-            cluster.sort(reverse=True)
-
-            # Group triples by day
-            days_triples = {}
-            for triple in triples:
-                day = triple[0]
-                if day not in days_triples:
-                    days_triples[day] = []
-                days_triples[day].append(triple)
-            
-            # Process each day
-            for day, day_triples in days_triples.items():
-                # Sort by start hour
-                day_triples.sort(key=lambda t: t[1])
-                
-                # Calculate the total span from earliest to latest
-                earliest_h = min(t[1] for t in day_triples)
-                latest_h = max(t[1] + t[2] for t in day_triples)
-                span = latest_h - earliest_h
-                
-                # Try to find a cluster block that can cover this span
-                found = False
-                for i in range(len(cluster)):
-                    if cluster[i] >= span:
-                        del cluster[i]
-                        found = True
-                        break
-                
-                # If no single block can cover the span, try using multiple blocks
-                if not found:
-                    # Find continuous segments (no gaps)
-                    segments = []
-                    current_start = day_triples[0][1]
-                    current_end = day_triples[0][1] + day_triples[0][2]
-                    
-                    for i in range(1, len(day_triples)):
-                        triple_start = day_triples[i][1]
-                        triple_end = day_triples[i][1] + day_triples[i][2]
-                        
-                        if triple_start > current_end:
-                            # Gap found, save current segment
-                            segments.append(current_end - current_start)
-                            current_start = triple_start
-                            current_end = triple_end
-                        elif triple_start == current_end:
-                            # Adjacent (touching), could merge or keep separate
-                            # Keep separate to allow multiple blocks
-                            segments.append(current_end - current_start)
-                            current_start = triple_start
-                            current_end = triple_end
-                        else:
-                            # Overlapping, must merge
-                            current_end = max(current_end, triple_end)
-                    
-                    # Save the last segment
-                    segments.append(current_end - current_start)
-                    
-                    # Try to match all segments with cluster blocks
-                    segments.sort(reverse=True)
-                    for segment_size in segments:
-                        matched = False
-                        for i in range(len(cluster)):
-                            if cluster[i] >= segment_size:
-                                del cluster[i]
-                                matched = True
-                                break
-                        if not matched:
-                            return False
-                        
-            return True
-
-        def check_clustering(g: Group, day: str, hour: int, duration: int, prob: Problem) -> bool:
-            clusters = prob.clusters
-            for cluster in clusters:
-                if g.id in cluster.groups_ids:
-                    records = [r for r in prob.records if r.group_id in cluster.groups_ids]
-                    triples = list(zip([r.day for r in records], 
-                                    [r.hour for r in records], 
-                                    [prob.groups[r.group_id].duration for r in records]))
-                    if not is_cluster_satisfied(copy.deepcopy(cluster.range), triples):
-                        return False
-            return True
+    def check_cluster_constraints(self, allocation: Allocation, group: Group):
+        """Ensure clusters meet day/slot range constraints."""
+        from .utils import check_clustering
 
         for cluster in self.clusters:
             if group.id not in cluster.groups_ids:
                 continue
             else:
-                if not check_clustering(group, record.day, record.hour, group.duration, self):
+                if not check_clustering(group, allocation.day, allocation.slot, group.duration, self):
                     group_ids_str = ", ".join(str(id) for id in sorted(cluster.groups_ids))
                     return f"Cluster connecting groups with ids {group_ids_str} is not satisfied"
         
                 
-    def check_group_availability(self, record: Record, group: Group):
-        for hour in range(record.hour, record.hour + group.duration):
-            if hour not in group.availability.hours[record.day]:
-                return f"{self.courses[group.course_id].name} group with id={group.id} cannot take place on {record.day} between {record.hour} and {record.hour + group.duration}"
+    def check_group_availability(self, allocation: Allocation, group: Group):
+        for slot in range(allocation.slot, allocation.slot + group.duration):
+            if slot not in group.availability.slots[allocation.day]:
+                return f"Group with id={group.id} cannot take place on {allocation.day} between {allocation.slot} and {allocation.slot + group.duration}"
+            
+    def __str__(self):
+        return (
+            'Problem<'
+            f"groups = {len(self.groups)}, "
+            f"teachers = {len(self.teachers)}, "
+            f"rooms = {len(self.rooms)}, "
+            f"clusters = {len(self.clusters)}, "
+            f"allocations = {len(self.allocations)}>" 
+        )

@@ -1,25 +1,24 @@
+from . import Room, Group, Teacher, Cluster, Allocation
 from .problem import Problem
-from .data_class import *
 import json
 
 class Request:
-    def __init__(self, req_type: int, problem: Problem, option: int):
-        self.request_type = req_type
+    def __init__(self, problem: Problem, method: str):
         self.problem = problem
-        self.option = option
+        self.method = method
 
 class Parser:
-    def parse(self, json_data:str) -> Request:
+    def parse(self, json_data: str) -> Request:
+        from .solver import ALGORITHMS_AVAILABLE
+        
         problem = Problem()
         data = json.loads(json_data)
 
-        req_type = data.get("requestType")
-
-        if(req_type == 0):
-            option = data.get("option") #who handles errors here?
-
-        for course in data.get('courses', []):
-            problem.add_course(Course.from_json(json.dumps(course)))
+        method = data.get("method", "probabilistic_alg")
+        if method not in ALGORITHMS_AVAILABLE and method:
+            alg_avail_str = ", ".join(f"'{a}'" for a in ALGORITHMS_AVAILABLE)
+            raise ValueError(f"field 'method' values in Request must be one of the following: {alg_avail_str}. Sent '{method}'.")
+        
         for room in data.get('rooms', []):
             problem.add_room(Room.from_json(json.dumps(room)))
         for group in data.get('groups', []):
@@ -29,8 +28,8 @@ class Parser:
         for cluster in data.get('clusters', []):
             problem.add_cluster(Cluster.from_json(json.dumps(cluster)))
         
-        established = data.get("records", [])
-        for record in established:
-            problem.add_record(Record.from_json(json.dumps(record)))
+        established = data.get("allocations", [])
+        for allocation in established:
+            problem.add_allocation(Allocation.from_json(json.dumps(allocation)))
 
-        return Request(req_type, problem, option)
+        return Request(problem, method)

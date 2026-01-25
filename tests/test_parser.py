@@ -1,47 +1,33 @@
+from src import Parser
 import unittest
-from backend.src import Parser
 
 class TestParser(unittest.TestCase):
-    def test_parsing_check_request(self):
+    def test_parsing_request(self):
         data = """
         {
-            "requestType" : 0,
-            "option": 1,
-            "courses": [
-                {  
-                    "id": 1,
-                    "name": "Logika dla informatyków"
-                },
-                {  
-                    "id": 17,
-                    "name": "MDM"
-                }
-            ],
+            "method": "probabilistic_alg",
             "groups": [
                 {
                     "id": 1,
-                    "course_id": 1,
                     "duration": 2,
                     "capacity": 24,
-                    "availability": {"mon": [8,9,10,11], "fri": [12,13]},
-                    "labels": [["CLASS"]],
+                    "availability": {"1": [8,9,10,11], "5": [12,13]},
+                    "labels": [[["CLASS"]]],
                     "teacher_ids": [1, 2, 3]
                 },
                 {
                     "id": 2,
-                    "course_id": 1,
                     "duration": 2,
                     "capacity": 24,
-                    "availability": {"mon": [8,9,10,11], "fri": [12,13]},
-                    "labels": [["CLASS"]],
+                    "availability": {"1": [8,9,10,11], "5": [12,13]},
+                    "labels": [[["CLASS"]]],
                     "teacher_ids": [1, 2, 3]
                 },
                 {
                     "id": 3,
-                    "course_id": 17,
                     "duration": 2,
                     "capacity": 30,
-                    "availability": {"mon": [8,9,10,11], "fri": [12,13]},
+                    "availability": {"1": [8,9,10,11], "5": [12,13]},
                     "teacher_ids": [3,4]
                 }
             ],
@@ -56,13 +42,13 @@ class TestParser(unittest.TestCase):
                     "id" : 32,
                     "capacity" : 24,
                     "availability" : {
-                        "mon": [],
-                        "tue": [10,11,12,13,14,15,16],
-                        "wed": [],
-                        "thu": [18,19],
-                        "fri": [8,9,10,11,12],
-                        "sat": [],
-                        "sun": []
+                        "1": [],
+                        "2": [10,11,12,13,14,15,16],
+                        "3": [],
+                        "4": [18,19],
+                        "5": [8,9,10,11,12],
+                        "6": [],
+                        "7": []
                         },
                     "labels" : ["CLASS", "TV"]
                 }
@@ -70,36 +56,27 @@ class TestParser(unittest.TestCase):
             "teachers": [
                 {
                     "id": 1,
-                    "name": "John Doe",
-                    "quota": 10,
-                    "availability": {"mon": [8,9,10,11], "fri": [12,13]}
+                    "availability": {"1": [8,9,10,11], "5": [12,13]}
                 },
                 {
                     "id": 2,
-                    "name": "Jan Łania",
-                    "quota": 20,
-                    "availability": {"mon": [10,11]}
+                    "availability": {"1": [10,11]}
                 },
                 {
                     "id": 3,
-                    "name": "Adam Kowalski",
-                    "quota": 90,
-                    "availability": {"mon": [8,9,10,11,12,13]}
+                    "availability": {"1": [8,9,10,11,12,13]}
                 },
                 {
                     "id": 4,
-                    "name": "Ignacy Krajan",
-                    "quota": 90,
-                    "availability": {"fri": [12,13]}
+                    "availability": {"5": [12,13]}
                 }
             ],
-            "records": [
+            "allocations": [
                 {
                     "group_id": 1,
-                    "teachers_ids": [2, 3],
-                    "rooms_ids": [32],
-                    "time_day": "fri",
-                    "time_hour": 12 
+                    "room_ids": [32],
+                    "day": 5,
+                    "slot": 12 
                 }
             ]
         }
@@ -108,33 +85,21 @@ class TestParser(unittest.TestCase):
         parser = Parser()
         request = parser.parse(data)
 
-        # request type
-        self.assertEqual(request.request_type, 0)
-
         # Option
-        self.assertEqual(request.option, 1)
+        self.assertEqual(request.method, "probabilistic_alg")
 
         problem = request.problem
-
-        # Courses
-        self.assertEqual(len(problem.courses), 2)
-        self.assertEqual(problem.courses[1].id, 1)
-        self.assertEqual(problem.courses[1].name, "Logika dla informatyków")
-        self.assertEqual(problem.courses[17].id, 17)
-        self.assertEqual(problem.courses[17].name, "MDM")
 
         # Groups
         self.assertEqual(len(problem.groups), 3)
         g1 = problem.groups[1]
         self.assertEqual(g1.id, 1)
-        self.assertEqual(g1.course_id, 1)
         self.assertEqual(g1.duration, 2)
         self.assertEqual(g1.capacity, 24)
         self.assertEqual(g1.teacher_ids, [1, 2, 3])
-        self.assertEqual(g1.labels, [["CLASS"]])
+        self.assertEqual(g1.labels, [[["CLASS"]]])
 
         g3 = problem.groups[3]
-        self.assertEqual(g3.course_id, 17)
         self.assertEqual(g3.teacher_ids, [3, 4])
         self.assertEqual(g3.capacity, 30)
         self.assertEqual(g3.labels, [])
@@ -150,45 +115,85 @@ class TestParser(unittest.TestCase):
         self.assertEqual(r.capacity, 24)
         self.assertIn("CLASS", r.labels)
         self.assertIn("TV", r.labels)
-        self.assertEqual(r.availability.hours["tue"], [10, 11, 12, 13, 14, 15, 16])
-        self.assertEqual(r.availability.hours["thu"], [18,19])
-        self.assertEqual(r.availability.hours["fri"], [8,9,10,11,12])
-        self.assertTrue(all(r.availability.hours[h] == [] for h in ['mon', 'wed', 'sat', 'sun']))
+        self.assertEqual(r.availability.slots[2], [10, 11, 12, 13, 14, 15, 16])
+        self.assertEqual(r.availability.slots[4], [18,19])
+        self.assertEqual(r.availability.slots[5], [8,9,10,11,12])
+        self.assertTrue(all(r.availability.slots[h] == [] for h in [1, 3, 6, 7]))
 
         # Teachers
         self.assertEqual(len(problem.teachers), 4)
         t1 = problem.teachers[1]
         self.assertEqual(t1.id, 1)
-        self.assertEqual(t1.name, "John Doe")
-        self.assertEqual(t1.quota, 10)
-        self.assertEqual(t1.availability.hours["mon"], [8, 9, 10, 11])
-        self.assertEqual(t1.availability.hours["fri"], [12, 13])
+        self.assertEqual(t1.availability.slots[1], [8, 9, 10, 11])
+        self.assertEqual(t1.availability.slots[5], [12, 13])
 
         t2 = problem.teachers[2]
         self.assertEqual(t2.id, 2)
-        self.assertEqual(t2.name, "Jan Łania")
-        self.assertEqual(t2.quota, 20)
-        self.assertEqual(t2.availability.hours["mon"], [10, 11])
+        self.assertEqual(t2.availability.slots[1], [10, 11])
 
         t3 = problem.teachers[3]
         self.assertEqual(t3.id, 3)
-        self.assertEqual(t3.name, "Adam Kowalski")
-        self.assertEqual(t3.quota, 90)
-        self.assertEqual(t3.availability.hours["mon"], [8, 9, 10, 11, 12, 13])
+        self.assertEqual(t3.availability.slots[1], [8, 9, 10, 11, 12, 13])
 
         t4 = problem.teachers[4]
         self.assertEqual(t4.id, 4)
-        self.assertEqual(t4.name, "Ignacy Krajan")
-        self.assertEqual(t4.quota, 90)
-        self.assertEqual(t4.availability.hours["fri"], [12, 13])
+        self.assertEqual(t4.availability.slots[5], [12, 13])
 
-        # Records
-        r1 = problem.records[0]
+        # Allocations
+        r1 = problem.allocations[0]
         self.assertEqual(r1.group_id, 1)
-        self.assertEqual(r1.teachers_ids, [2, 3])
-        self.assertEqual(r1.rooms_ids, [32])
-        self.assertEqual(r1.day, "fri")
-        self.assertEqual(r1.hour, 12)
+        self.assertEqual(r1.room_ids, [32])
+        self.assertEqual(r1.day, 5)
+        self.assertEqual(r1.slot, 12)
 
         # Option
-        self.assertEqual(request.option, 1)
+        self.assertEqual(request.method, "probabilistic_alg")
+
+    def test_parser_return_descriptive_errors(self):
+        data = """
+        {
+            "method": "probabilistic_alg",
+            "courses": [
+                {  
+                    "id": 1,
+                    "name": "Logika dla informatyków"
+                }
+            ],
+            "groups": [
+                {
+                    "id": 1,
+                    "duration": "abc",
+                    "capacity": 24,
+                    "availability": {"1": [8,9,10,11], "5": [12,13]},
+                    "labels": [[["CLASS"]]],
+                    "teacher_ids": [1]
+                }
+            ],
+            "rooms": [
+                {
+                    "id" : 32,
+                    "capacity" : 24,
+                    "availability" : {
+                        "2": [10,11,12,13,14,15,16],
+                        "4": [18,19],
+                        "5": [8,9,10,11,12]
+                        },
+                    "labels" : ["CLASS", "TV"]
+                }
+            ],
+            "teachers": [
+                {
+                    "id": 1,
+                    "availability": {"1": [8,9,10,11], "5": [12,13]}
+                }
+            ]
+        }
+        """
+        
+        parser = Parser()
+
+        with self.assertRaises(ValueError) as err:
+            parser.parse(data)
+
+        self.assertIn("duration", str(err.exception))
+        self.assertIn("abc", str(err.exception))
