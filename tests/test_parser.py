@@ -1,4 +1,5 @@
 from src import Parser
+from src.models import Group
 import unittest
 
 class TestParser(unittest.TestCase):
@@ -33,8 +34,9 @@ class TestParser(unittest.TestCase):
             ],
             "clusters": [
                 {
+                    "id": 1,
                     "range": [2],
-                    "groups_ids": [1, 2]
+                    "group_ids": [1, 2]
                 }
             ],
             "rooms": [
@@ -76,7 +78,7 @@ class TestParser(unittest.TestCase):
                     "group_id": 1,
                     "room_ids": [32],
                     "day": 5,
-                    "slot": 12 
+                    "slots": [12,13] 
                 }
             ]
         }
@@ -105,8 +107,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(g3.labels, [])
 
         c1 = problem.clusters[0]
+        self.assertEqual(c1.id, 1)
         self.assertEqual(c1.range, [2])
-        self.assertEqual(c1.groups_ids, [1, 2])
+        self.assertEqual(c1.group_ids, [1, 2])
 
         # Rooms
         self.assertEqual(len(problem.rooms), 1)
@@ -144,7 +147,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(r1.group_id, 1)
         self.assertEqual(r1.room_ids, [32])
         self.assertEqual(r1.day, 5)
-        self.assertEqual(r1.slot, 12)
+        self.assertEqual(r1.slots, [12,13])
 
         # Option
         self.assertEqual(request.method, "probabilistic_alg")
@@ -197,3 +200,28 @@ class TestParser(unittest.TestCase):
 
         self.assertIn("duration", str(err.exception))
         self.assertIn("abc", str(err.exception))
+
+    def test_parser_throws_when_group_has_no_teachers(self):
+        data = """
+        {
+            "method": "probabilistic_alg",
+            "groups": [
+                {
+                    "id": 1,
+                    "duration": 2,
+                    "capacity": 24,
+                    "availability": {"1": [8,9,10,11]},
+                    "labels": [[["CLASS"]]],
+                    "teacher_ids": []
+                }
+            ]
+        }
+        """
+        
+        parser = Parser()
+
+        Group.THROW_IF_NO_TEACHER = True
+        with self.assertRaises(ValueError) as err:
+            parser.parse(data)
+
+        self.assertIn("teacher", str(err.exception))

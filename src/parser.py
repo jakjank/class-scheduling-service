@@ -1,23 +1,22 @@
-from . import Room, Group, Teacher, Cluster, Allocation
-from .problem import Problem
+from src.models import Room, Group, Teacher, Cluster, Allocation
+from src import Problem, CHECK_OPTIONS, ALGORITHMS_AVAILABLE
+from src.communication import Query
 import json
 
-class Request:
-    def __init__(self, problem: Problem, method: str):
-        self.problem = problem
-        self.method = method
-
 class Parser:
-    def parse(self, json_data: str) -> Request:
-        from .solver import ALGORITHMS_AVAILABLE
-        
+    def parse(self, json_data: str, check_request=False) -> Query:
         problem = Problem()
         data = json.loads(json_data)
 
-        method = data.get("method", "probabilistic_alg")
-        if method not in ALGORITHMS_AVAILABLE and method:
-            alg_avail_str = ", ".join(f"'{a}'" for a in ALGORITHMS_AVAILABLE)
-            raise ValueError(f"field 'method' values in Request must be one of the following: {alg_avail_str}. Sent '{method}'.")
+        method = data.get("method", None)
+        if check_request:
+            if method not in CHECK_OPTIONS and method:
+                check_opt_str = ", ".join(f"'{a}'" for a in CHECK_OPTIONS)
+                raise ValueError(f"field 'method' value in Request to '/check' endpoint must be one of the following: {check_opt_str}. Sent '{method}'.")
+        else:
+            if method not in ALGORITHMS_AVAILABLE and method:
+                alg_opt_str = ", ".join(f"'{a}'" for a in ALGORITHMS_AVAILABLE)
+                raise ValueError(f"field 'method' value in Request to '/schedule' endpoint must be one of the following: {alg_opt_str}. Sent '{method}'.")
         
         for room in data.get('rooms', []):
             problem.add_room(Room.from_json(json.dumps(room)))
@@ -32,4 +31,4 @@ class Parser:
         for allocation in established:
             problem.add_allocation(Allocation.from_json(json.dumps(allocation)))
 
-        return Request(problem, method)
+        return Query(problem, method)

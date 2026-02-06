@@ -1,4 +1,4 @@
-from src import Teacher, Availability
+from src.models import Teacher, Availability
 import unittest
 
 class TestTeacher(unittest.TestCase):

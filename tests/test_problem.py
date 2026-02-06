@@ -7,37 +7,37 @@ class TestProblem(unittest.TestCase):
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [], [15], []))
         response = problem.check()
 
-        self.assertEqual(response, "Group with id=17 is not present in solution")
+        self.assertEqual(response[0].msg, "Group with id=17 is not present in solution")
 
     def test_check_teacher_availability(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({4 : [15, 16]}), [], [15], []))
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
-        problem.add_allocation(Allocation(17, [5], 4, 15))
+        problem.add_allocation(Allocation(17, [5], 4, [15,16]))
         response = problem.check()
 
-        self.assertEqual(response, "Teacher with id=15 is not available on 4 between 15 and 17")
+        self.assertEqual(response[0].msg, "Teacher with id=15 is not available on 4 in each slot out of [15, 16]")
 
     def test_check_teacher_conflicts(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [], [15], []))
         problem.add_group(Group(18, 2, 30, Availability({}), [], [15], []))
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
-        problem.add_allocation(Allocation(17,[5], 5, 10))
-        problem.add_allocation(Allocation(18,[6], 5, 11))
+        problem.add_allocation(Allocation(17,[5], 5, [10,11]))
+        problem.add_allocation(Allocation(18,[6], 5, [11,12]))
         response = problem.check()
 
-        self.assertIn(response, "Teacher with id=15 has conflicting classes on 5 between 10 and 13")
+        self.assertIn(response[0].msg, "Teacher with id=15 has conflicting classes on 5 between 10 and 13")
     
     def test_check_room_availability(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [], [15], []))
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
-        problem.add_allocation(Allocation(17,[5], 5, 10))
+        problem.add_allocation(Allocation(17,[5], 5, [10,11]))
         problem.add_room(Room(5, 36, Availability({4 : [8,9]}), []))
         response = problem.check()
 
-        self.assertEqual(response, "Room with id=5 is not available on 5 between 10 and 12")
+        self.assertEqual(response[0].msg, "Room with id=5 is not available on 5 in slots [10, 11]")
 
     def test_check_room_colission(self):
         problem = Problem()
@@ -46,33 +46,33 @@ class TestProblem(unittest.TestCase):
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
         problem.add_teacher(Teacher(16, Availability({5 : [10,11]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), []))
-        problem.add_allocation(Allocation(17,[5], 5, 10))
-        problem.add_allocation(Allocation(18,[5], 5, 11))
+        problem.add_allocation(Allocation(17,[5], 5, [10,11]))
+        problem.add_allocation(Allocation(18,[5], 5, [11,12]))
         response = problem.check()
 
-        self.assertEqual(response, "At least two groups (id=17, id=18) use room(s) with id=5 in the same time on 5 between 10 and 12")
+        self.assertEqual(response[0].msg, "At least two groups (id=17, id=18) use room with id=5 at the same time on 5 in slots [10, 11]")
 
     def test_check_room_labels(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [[["TV", "LAB"]]], [15], []))
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
-        problem.add_allocation(Allocation(17,[5], 5, 10))
+        problem.add_allocation(Allocation(17,[5], 5, [10,11]))
         response = problem.check()
 
-        self.assertEqual(response, "Group with id=17 has room(s) with labels=[['LAB']] but needs labels=[[['TV', 'LAB']]]")
+        self.assertEqual(response[0].msg, "Group with id=17 has room(s) with labels=[['LAB']] but needs labels=[[['TV', 'LAB']]]")
 
     def test_check_room_capacity(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [[["LAB"]]], [15], []))
         problem.add_teacher(Teacher(15, Availability({5 : [10,11]})))
         problem.add_room(Room(5, 24, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
-        problem.add_allocation(Allocation(17, [5], 5, 10))
+        problem.add_allocation(Allocation(17, [5], 5, [10,11]))
         response = problem.check()
 
-        self.assertEqual(response, "Group with id=17 has capacity=30 but has assigned room (id=5) with capacity=24")
+        self.assertEqual(response[0].msg, "Group with id=17 has capacity=30 but has assigned room (id=5) with capacity=24")
 
-    def test_check_cluster_satisfaction_slotly(self):
+    def test_check_cluster_satisfaction_slots(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({5 : [10,11]}), [[["LAB"]]], [15], []))
         problem.add_group(Group(18, 2, 30, Availability({5 : [10,11]}), [[["LAB"]]], [16], []))
@@ -80,12 +80,12 @@ class TestProblem(unittest.TestCase):
         problem.add_teacher(Teacher(16, Availability({5 : [10,11]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
         problem.add_room(Room(6, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
-        problem.add_cluster(Cluster([2], [17,18]))
-        problem.add_allocation(Allocation(17, [5], 5, 10))
-        problem.add_allocation(Allocation(18, [6], 5, 12))
+        problem.add_cluster(Cluster(1, [2], [17,18]))
+        problem.add_allocation(Allocation(17, [5], 5, [10,11]))
+        problem.add_allocation(Allocation(18, [6], 5, [12,13]))
         response = problem.check()
 
-        self.assertEqual(response, "Cluster connecting groups with ids 17, 18 is not satisfied")
+        self.assertEqual(response[0].msg, "Cluster connecting groups with ids 17, 18 is not satisfied")
 
     def test_check_cluster_satisfaction_daily(self):
         problem = Problem()
@@ -95,12 +95,12 @@ class TestProblem(unittest.TestCase):
         problem.add_teacher(Teacher(16, Availability({5 : [10,11]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
         problem.add_room(Room(6, 36, Availability({4 : [8,9,10,11,12]}), ["LAB"]))
-        problem.add_cluster(Cluster([2], [17,18]))
-        problem.add_allocation(Allocation(17, [5], 5, 10))
-        problem.add_allocation(Allocation(18, [6], 4, 10))
+        problem.add_cluster(Cluster(1, [2], [17,18]))
+        problem.add_allocation(Allocation(17, [5], 5, [10,11]))
+        problem.add_allocation(Allocation(18, [6], 4, [10,11]))
         response = problem.check()
 
-        self.assertEqual(response, "Cluster connecting groups with ids 17, 18 is not satisfied")
+        self.assertEqual(response[0].msg, "Cluster connecting groups with ids 17, 18 is not satisfied")
 
     def test_check_cluster_satisfaction_complicated(self):
         problem = Problem()
@@ -110,12 +110,12 @@ class TestProblem(unittest.TestCase):
         problem.add_teacher(Teacher(16, Availability({5 : [10,11,12,13], 4 : [10,11]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
         problem.add_room(Room(6, 36, Availability({4 : [8,9,10,11,12]}), ["LAB"]))
-        problem.add_cluster(Cluster([2,2], [17,18]))
-        problem.add_allocation(Allocation(17, [5], 5, 10))
-        problem.add_allocation(Allocation(18, [6], 4, 10))
+        problem.add_cluster(Cluster(1, [2,2], [17,18]))
+        problem.add_allocation(Allocation(17, [5], 5, [10,11]))
+        problem.add_allocation(Allocation(18, [6], 4, [10,11]))
         response = problem.check()
 
-        self.assertEqual(response, "0")
+        self.assertEqual(response, [])
 
     def test_check_cluster_satisfaction_complicated2(self):
         problem = Problem()
@@ -125,20 +125,20 @@ class TestProblem(unittest.TestCase):
         problem.add_teacher(Teacher(16, Availability({5 : [10,11,12,13]})))
         problem.add_room(Room(5, 36, Availability({5 : [8,9,10,11,12]}), ["LAB"]))
         problem.add_room(Room(6, 36, Availability({5 : [8,9,10,11,12,13]}), ["LAB"]))
-        problem.add_cluster(Cluster([2,2], [17,18]))
-        problem.add_allocation(Allocation(17, [5], 5, 10))
-        problem.add_allocation(Allocation(18, [6], 5, 12))
+        problem.add_cluster(Cluster(1, [2,2], [17,18]))
+        problem.add_allocation(Allocation(17, [5], 5, [10,11]))
+        problem.add_allocation(Allocation(18, [6], 5, [12,13]))
         response = problem.check()
 
-        self.assertEqual(response, "0")
+        self.assertEqual(response, [])
     
     def test_check_group_availability(self):
         problem = Problem()
         problem.add_group(Group(17, 2, 30, Availability({4 : [15, 16]}), [], [], []))
-        problem.add_allocation(Allocation(17, [], 4, 16))
+        problem.add_allocation(Allocation(17, [], 4, [16,17]))
         response = problem.check()
 
-        self.assertEqual(response, "Group with id=17 cannot take place on 4 between 16 and 18")
+        self.assertEqual(response[0].msg, "Group with id=17 cannot take place on 4 in slots [16, 17]")
 
     def test_add_allocation_and_update_availability_single_slot_no_mask(self):
         problem = Problem()
@@ -153,7 +153,7 @@ class TestProblem(unittest.TestCase):
         problem.add_room(room)
         problem.add_group(group)
         
-        alloc = Allocation(5, [101], 1, 10)
+        alloc = Allocation(5, [101], 1, [10])
         result = problem.add_allocation_and_update_availability(alloc)
         
         self.assertTrue(result)
@@ -174,7 +174,7 @@ class TestProblem(unittest.TestCase):
         problem.add_room(room)
         problem.add_group(group)
         
-        alloc = Allocation(6, [102], 1, 10)
+        alloc = Allocation(6, [102], 1, [10,11,12])
         result = problem.add_allocation_and_update_availability(alloc)
         
         self.assertTrue(result)
@@ -196,7 +196,7 @@ class TestProblem(unittest.TestCase):
         problem.add_room(room)
         problem.add_group(group)
         
-        alloc = Allocation(7, [103], 1, 10)
+        alloc = Allocation(7, [103], 1, [10,11])
         result = problem.add_allocation_and_update_availability(alloc)
         
         self.assertTrue(result)
@@ -222,8 +222,8 @@ class TestProblem(unittest.TestCase):
         problem.add_room(room)
         problem.add_group(group)
         
-        # Teacher only available for slots 10-11, but class needs slots 11-12 (2 slots starting at 11)
-        alloc = Allocation(8, [104], 1, 11)
+        # Teacher only available for slots 10-11, but class needs slots 11-12
+        alloc = Allocation(8, [104], 1, [11,12])
         result = problem.add_allocation_and_update_availability(alloc)
         
         # Should fail because slot 12 is not available for teacher
@@ -244,7 +244,7 @@ class TestProblem(unittest.TestCase):
         problem.add_group(group)
         
         # Room only available for slots 10-11, but class needs slots 11-12 (2 slots starting at 11)
-        alloc = Allocation(9, [105], 1, 11)
+        alloc = Allocation(9, [105], 1, [11,12])
         result = problem.add_allocation_and_update_availability(alloc)
         
         # Should fail because slot 12 is not available for room
@@ -270,7 +270,7 @@ class TestProblem(unittest.TestCase):
         problem.add_room(room2)
         problem.add_group(group)
         
-        alloc = Allocation(10, [106, 107], 1, 10)
+        alloc = Allocation(10, [106, 107], 1, [10,11])
         result = problem.add_allocation_and_update_availability(alloc)
         
         self.assertTrue(result)
@@ -299,7 +299,7 @@ class TestProblem(unittest.TestCase):
         problem.add_group(group)
         
         # Try to reserve with overlapping mask
-        alloc = Allocation(11, [108], 1, 10)
+        alloc = Allocation(11, [108], 1, [10])
         result = problem.add_allocation_and_update_availability(alloc)
         
         # Should fail because period 1 is already taken
@@ -341,3 +341,61 @@ class TestProblem(unittest.TestCase):
             problem.add_room(r2)
 
         self.assertIn("Rooms should have unique ids. Id '8' repeats.", str(err.exception))
+
+    def test_add_alloc_after_cluster_should_add_alloc_to_cluster(self):
+        prob = Problem()
+
+        prob.add_cluster(Cluster(1, [2,2],[31,32]))
+        prob.add_allocation(Allocation(31, [], 1, [8,9]))
+
+        self.assertEqual(prob.clusters[0].allocations[0].group_id, 31)
+        self.assertEqual(len(prob.clusters[0].allocations), 1)
+
+    def test_add_cluster_after_alloc_should_add_alloc_to_cluster(self):
+        prob = Problem()
+
+        prob.add_allocation(Allocation(31, [], 1, [8,9]))
+        prob.add_cluster(Cluster(1, [2,2],[31,32]))
+
+        self.assertEqual(prob.clusters[0].allocations[0].group_id, 31)
+        self.assertEqual(len(prob.clusters[0].allocations), 1)
+
+    def test_adding_clusters_with_same_id_should_trow(self):
+        problem = Problem()
+        c1 = Cluster(8, [], [1,2])
+        c2 = Cluster(8, [2], [3,4])
+        
+        problem.add_room(c1)
+
+        with self.assertRaises(ValueError) as err:
+            problem.add_room(c2)
+
+        self.assertIn("Rooms should have unique ids. Id '8' repeats.", str(err.exception))
+
+    def test_full_check_should_return_all_problems(self):
+        p = Problem()
+
+        g1 = Group(1,2,30,Availability({1:[8,9,10,11]}), [], [1], [])
+        g2 = Group(2,2,30,Availability({1:[8,9,10,11]}), [], [1], [])
+        t = Teacher(1,Availability({}))
+        c = Cluster(1, [], [1, 2])
+        a1 = Allocation(1, [], 2, [8,9])
+        a2 = Allocation(2, [], 2, [8,9])
+
+        p.add_group(g1)
+        p.add_group(g2)
+        p.add_teacher(t)
+        p.add_cluster(c)
+        p.add_allocation(a1)
+        p.add_allocation(a2)
+
+        # Problems:
+        # 1: g1 is not available on tuesday
+        # 2: g2 is not available on tuesday
+        # 3: g1's teacher is not available on tuesday
+        # 4: g2's teacher is not available on tuesday
+        # 5: g1 and g2 cannot overlap (x - first g1 checks it overlaps g2 but should not and g2 checks the same)
+        # 6: teacher has conflicting classes (x2 - as above)
+
+        failed_constraints = p.check(method="full_check")
+        self.assertEqual(len(failed_constraints), 8)

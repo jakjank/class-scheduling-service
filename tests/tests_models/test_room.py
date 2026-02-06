@@ -1,4 +1,4 @@
-from src import Room, Availability
+from src.models import Room, Availability
 import unittest
 
 class TestRoom(unittest.TestCase):

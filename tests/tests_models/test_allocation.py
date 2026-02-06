@@ -1,4 +1,4 @@
-from src import Allocation
+from src.models import Allocation
 import unittest
 
 class TestAllocation(unittest.TestCase):
@@ -9,7 +9,7 @@ class TestAllocation(unittest.TestCase):
             "teacher_ids": [1],
             "room_ids": [32],
             "day": 1,
-            "slot": 8
+            "slots": [8,9]
         }
         """
         
@@ -18,7 +18,7 @@ class TestAllocation(unittest.TestCase):
         self.assertEqual(alloc.group_id, 1)
         self.assertEqual(alloc.room_ids, [32])
         self.assertEqual(alloc.day, 1)
-        self.assertEqual(alloc.slot, 8)
+        self.assertEqual(alloc.slots, [8,9])
 
     def test_bad_day_format_throws(self):
         data = """
@@ -27,7 +27,7 @@ class TestAllocation(unittest.TestCase):
             "teacher_ids": [1],
             "room_ids": [32],
             "day": 9,
-            "slot": 8
+            "slots": [8]
         }
         """
         
@@ -43,7 +43,7 @@ class TestAllocation(unittest.TestCase):
             "teacher_ids": [1],
             "room_ids": [32],
             "day": 1,
-            "slot": "abc"
+            "slots": ["abc",1]
         }
         """
         
@@ -59,7 +59,7 @@ class TestAllocation(unittest.TestCase):
             "teacher_ids": [1],
             "room_ids": [32],
             "day": 1,
-            "slot": -24
+            "slots": [-24]
         }
         """
         
@@ -75,7 +75,7 @@ class TestAllocation(unittest.TestCase):
             "group_id": 1,
             "teacher_ids": [1],
             "room_ids": [32],
-            "slot": 12
+            "slot": [12]
         }
         """
         

@@ -1,9 +1,11 @@
-from src import get_all_placements_for_group, number_of_possible_placements, get_best_allocation
-from src import Problem, Response, Allocation
+from .utils import get_all_placements_for_group, number_of_possible_placements, get_best_allocation
+from src import Problem
+from src.communication import Response, Issue
+from src.models import Allocation
 from typing import Callable
 import copy
 
-def rating_function(allocation : Allocation, prob : Problem):
+def rating_function(allocation : Allocation, prob : Problem) -> int:
         grade = 0
 
         # free seats in room
@@ -43,18 +45,18 @@ def rating_function(allocation : Allocation, prob : Problem):
                 grade += 2
 
         # even starting slot
-        if allocation.slot % 2 == 0:
+        if min(allocation.slots) % 2 == 0:
             grade += 5
 
         # not too early and not too late
-        if 10 <= allocation.slot <= 17:
+        if 10 <= min(allocation.slots) <= 17:
             grade += 2
 
         # TODO student votes
 
         return grade
 
-def rating_function_solve(prob: Problem, rating_function : Callable[[Allocation, Problem], int]=rating_function):
+def rating_function_solve(prob: Problem, rating_function : Callable[[Allocation, Problem], int]=rating_function) -> Response:
 
     established_groups = [r.group_id for r in prob.allocations]
     groups     = list(prob.groups.values())
@@ -82,13 +84,13 @@ def rating_function_solve(prob: Problem, rating_function : Callable[[Allocation,
 
         if len(placements) == 0:
             # not very useful msg
-            return Response(1, "Could not find placement for group with id=" + str(g.id) + ". (RATING_SOLVE)", prob.allocations)
+            return Response(False, [Issue("group", g.id, f"Could not find placement for group with id={g.id} (RATING_SOLVE)")], prob.allocations)
         
         # chose best placement according to rating function
         best_placement = get_best_allocation(placements, prob, rating_function)
 
         # add placement to soulution and delete availabilities
         if not prob.add_allocation_and_update_availability(best_placement):
-            return Response(1, "Unexpected error while looking for solution", [])
+            return Response(False, [Issue("other", 0, "Unexpected error while looking for solution")], [])
 
-    return Response(0, "Success", prob.allocations)
+    return Response(True, [], prob.allocations)

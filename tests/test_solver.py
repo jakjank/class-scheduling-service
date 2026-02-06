@@ -25,11 +25,11 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed and return a Response with status 0
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 1)
                 self.assertEqual(result.solution[0].group_id, 1)
                 self.assertIn(result.solution[0].day, [1])
-                self.assertIn(result.solution[0].slot, [10, 11, 12])
+                self.assertTrue(any(s in [10, 11, 12] for s in result.solution[0].slots))
                 self.assertEqual(result.solution[0].room_ids, [101])
 
     def test_solve_when_group_has_no_teacher(self):
@@ -52,11 +52,11 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed and return a Response with status 0
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 1)
                 self.assertEqual(result.solution[0].group_id, 1)
                 self.assertIn(result.solution[0].day, [1])
-                self.assertIn(result.solution[0].slot, [10, 11, 12])
+                self.assertTrue(any(s in [10, 11, 12] for s in result.solution[0].slots))
                 self.assertEqual(result.solution[0].room_ids, [101])
 
     def test_solve_multiple_groups(self):
@@ -91,7 +91,7 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed and return allocations for both groups
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 2)
                 group_ids = [r.group_id for r in result.solution]
                 self.assertIn(1, group_ids)
@@ -120,7 +120,7 @@ class TestSolver(unittest.TestCase):
                 
                 # Should fail and return Response with status 1
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 1)
+                self.assertFalse(result.success)
                 self.assertEqual(len(result.solution), 0)
 
     def test_solve_with_established_allocations(self):
@@ -151,20 +151,20 @@ class TestSolver(unittest.TestCase):
                 problem.add_group(group2)
                 
                 # Add an established allocation for group 1
-                problem.add_allocation(Allocation(1, [101], 1, 10))
+                problem.add_allocation(Allocation(1, [101], 1, [10]))
                 
                 solver = Solver()
                 result = solver.solve(problem, method)
                 
                 # Should succeed and return allocations for both groups (including the established one)
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 2)
                 
                 # The first allocations should be the established one
                 self.assertEqual(result.solution[0].group_id, 1)
                 self.assertEqual(result.solution[0].day, 1)
-                self.assertEqual(result.solution[0].slot, 10)
+                self.assertEqual(result.solution[0].slots, [10])
                 
                 # The second should be the newly solved group 2
                 self.assertEqual(result.solution[1].group_id, 2)
@@ -192,14 +192,14 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result)
                 self.assertEqual(len(result.solution), 1)
                 self.assertEqual(result.solution[0].group_id, 1)
                 
                 # Verify the slot and the next slot are both available in group's availability
-                start_slot = result.solution[0].slot
-                self.assertIn(start_slot, group_avail.slots[result.solution[0].day])
-                self.assertIn(start_slot + 1, group_avail.slots[result.solution[0].day])
+                slots = result.solution[0].slots
+                self.assertIn(slots[0], group_avail.slots[result.solution[0].day])
+                self.assertIn(slots[1], group_avail.slots[result.solution[0].day])
 
     def test_solve_with_period_mask(self):
         for method in ALGORITHMS_AVAILABLE:
@@ -224,7 +224,7 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 1)
                 self.assertEqual(result.solution[0].group_id, 1)
 
@@ -258,7 +258,7 @@ class TestSolver(unittest.TestCase):
                 
                 # Should succeed
                 self.assertIsInstance(result, Response)
-                self.assertEqual(result.status, 0)
+                self.assertTrue(result.success)
                 self.assertEqual(len(result.solution), 1)
                 self.assertEqual(result.solution[0].group_id, 1)
                 # Should have 2 rooms (one for each label set)

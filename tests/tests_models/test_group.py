@@ -1,4 +1,4 @@
-from src import Group, Cluster, Availability
+from src.models import Group
 import unittest
 
 class TestGroup(unittest.TestCase):
@@ -71,14 +71,6 @@ class TestGroup(unittest.TestCase):
         )
         self.assertEqual(group.occurrence_desc, [1,2,7])
 
-    def test_adding_cluster(self):
-
-        group = Group(32, 2, 24, Availability({}), [], [], [])
-        cluster = Cluster([2,2], [32,37])
-
-        group.add_cluster(cluster)
-
-        self.assertEqual(group.clusters, [cluster])
 
     def test_duration_not_int_throws(self):
         data = """
@@ -172,3 +164,38 @@ class TestGroup(unittest.TestCase):
             Group.from_json(data)
         
         # self.assertIn("[[['tag1', 'tag2'] ,['tag3']], ['tag4']]", str(err.exception))
+
+    def test_from_json_throws_when_no_teachers(self):
+        Group.THROW_IF_NO_TEACHER = True
+        data = """
+            {
+                "id": 1,
+                "duration": 2,
+                "capacity": 24,
+                "availability": {"1": [8,9,10,11]},
+                "labels": [[["CLASS"]]],
+                "teacher_ids": []
+            }
+        """
+
+        with self.assertRaises(ValueError) as err:
+            Group.from_json(data)
+
+        self.assertIn("teacher", str(err.exception))
+    
+    def test_from_json_throws_when_no_teachers_field(self):
+        Group.THROW_IF_NO_TEACHER = True
+        data = """
+            {
+                "id": 1,
+                "duration": 2,
+                "capacity": 24,
+                "availability": {"1": [8,9,10,11]},
+                "labels": [[["CLASS"]]]
+            }
+        """
+
+        with self.assertRaises(ValueError) as err:
+            Group.from_json(data)
+
+        self.assertIn("teacher", str(err.exception))

@@ -1,13 +1,8 @@
-from dataclasses import field
-from typing import Dict, List
 import json
 
 DAYS = [1, 2, 3, 4, 5, 6, 7]
 
 class Availability:
-    slots: Dict[str, List[int]] = field(default_factory=lambda: {day: [] for day in DAYS})
-    taken_periods: Dict = field(default_factory=dict)
-
     def __init__(self, dir : dict, taken_periods = None):
         invalid_keys = set(dir.keys()) - set(DAYS)
         if invalid_keys:
@@ -17,7 +12,7 @@ class Availability:
         for day in DAYS:
             slots = dir.get(day, [])
             if not all(isinstance(slot, int) and 0 <= slot for slot in slots):
-                raise ValueError(f"Slots in Availability must be non-negative integers. Sent '{slot}'.")
+                raise ValueError(f"Slots in Availability must be non-negative integers. Sent '{slots}'.")
             filtered[day] = slots
         self.slots = filtered
         
@@ -53,20 +48,26 @@ class Availability:
         for day in DAYS:
             slots = data.get(str(day), [])
             for slot in slots:
-                if not isinstance(slot, int) or not (0 <= slot <= 23):
+                if not isinstance(slot, int):
                     raise ValueError(f"Slots in Availaility must be non-negative integers. Sent '{slot}'.")
             filtered[day] = slots
         return Availability(filtered)
     
+    def check_occurrence_desc(needed_periods: list[int], taken_periods: list[int]) -> bool:
+        if len(needed_periods) == 0 and len(taken_periods) != 0:
+            return False
+        for t in taken_periods:
+            if t in needed_periods:
+                return False
+        return True
+
     def remove(self, day: int, slot: int, mask: list[int]) -> bool:
-        from ..utils import check_occurrence_desc
-        
         # Check if slot exists for the given day
         if slot not in self.slots[day]:
             return False
         
         # Check if the mask conflicts with already taken periods
-        if not check_occurrence_desc(mask, self.taken_periods.get((day, slot), [])):
+        if not Availability.check_occurrence_desc(mask, self.taken_periods.get((day, slot), [])):
             return False
         
         # If no mask, remove the slot completely

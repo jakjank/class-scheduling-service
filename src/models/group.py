@@ -1,7 +1,9 @@
-from . import Availability, Cluster
+from . import Availability
 import json
 
 class Group:
+    THROW_IF_NO_TEACHER = True
+
     def __init__(
             self,
             id : int,
@@ -25,7 +27,6 @@ class Group:
         self.labels = labels
         self.teacher_ids = teacher_ids
         self.occurrence_desc = occurrence_desc
-        self.clusters = []
 
     @staticmethod
     def from_json(json_string : str) -> 'Group':
@@ -43,13 +44,12 @@ class Group:
         avail = Availability.from_json(json.dumps(availability_data))
         labels = data.get('labels', [])
         teacher_ids = data.get('teacher_ids', [])
+        if not teacher_ids and Group.THROW_IF_NO_TEACHER:
+            raise ValueError(f"Group has to have at least one teacher assigned. The group with id {id} has no teachers.")
         occurrence_desc = data.get('occurrence_desc', [])
         return Group(id, duration, capacity, avail, labels, teacher_ids, occurrence_desc)
-    
-    def add_cluster(self, c: Cluster):
-        self.clusters.append(c)
 
-    def are_labels_valid(labels):
+    def are_labels_valid(labels: list) -> bool:
         # Must be a list
         if not isinstance(labels, list):
             return False

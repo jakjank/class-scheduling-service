@@ -1,4 +1,4 @@
-from src import Availability
+from src.models import Availability
 import unittest
 
 class TestAvailability(unittest.TestCase):
@@ -61,7 +61,7 @@ class TestAvailability(unittest.TestCase):
         with self.assertRaises(ValueError) as err:
             Availability.from_json(data)
         
-        self.assertIn("'-2'", str(err.exception))
+        self.assertIn("-2", str(err.exception))
     
     def test_init_from_dict(self):
         dir = {1 : [],
@@ -151,3 +151,55 @@ class TestAvailability(unittest.TestCase):
         result3 = avail.remove(1, 10, [5])
         self.assertTrue(result3)
         self.assertEqual(avail.taken_periods[(1, 10)], [1, 3, 5])
+
+    # This test may look 'weird' so a bit of context:
+    # this test is a result of incorrect implementation 
+    # of commit: f2b1d7d9e4ee8d7e4871c163bcde561981c51774
+    # Some rules "<=23" were not deleted.
+    # Checkout above commit msg/changes for more context
+    def test_from_json_with_slots_over_23(self):
+        data = """
+        {
+            "2": [30,31,32,33,50,51],
+            "4": [1,2,3,4,5,6],
+            "5": [100,101,102,109,110]
+        }
+        """
+
+        avail = Availability.from_json(data)
+
+        self.assertEqual(avail.slots[1], [])
+        self.assertEqual(avail.slots[2], [30,31,32,33,50,51])
+        self.assertEqual(avail.slots[3], [])
+        self.assertEqual(avail.slots[4], [1,2,3,4,5,6])
+        self.assertEqual(avail.slots[5], [100,101,102,109,110])
+        self.assertEqual(avail.slots[6], [])
+        self.assertEqual(avail.slots[7], [])
+
+    # This test may look 'weird' so a bit of context:
+    # this test is a result of incorrect implementation 
+    # of commit: f2b1d7d9e4ee8d7e4871c163bcde561981c51774
+    # Some rules "<=23" were not deleted.
+    # Checkout above commit msg/changes for more context
+    def test_init_with_slots_over_23(self):
+        data ={
+            2: [30,31,32,33,50,51],
+            4: [1,2,3,4,5,6],
+            5: [100,101,102,109,110]
+        }
+
+        avail = Availability(data)
+
+        self.assertEqual(avail.slots[1], [])
+        self.assertEqual(avail.slots[2], [30,31,32,33,50,51])
+        self.assertEqual(avail.slots[3], [])
+        self.assertEqual(avail.slots[4], [1,2,3,4,5,6])
+        self.assertEqual(avail.slots[5], [100,101,102,109,110])
+        self.assertEqual(avail.slots[6], [])
+        self.assertEqual(avail.slots[7], [])
+
+    def test_check_occurrence_desc(self):
+        self.assertFalse(Availability.check_occurrence_desc([1,2,3,4],[3]))
+        self.assertFalse(Availability.check_occurrence_desc([],[3]))
+        self.assertTrue(Availability.check_occurrence_desc([1,2,3,4],[]))
+        self.assertTrue(Availability.check_occurrence_desc([1,3],[2,4]))

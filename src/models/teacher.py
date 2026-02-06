@@ -10,7 +10,7 @@ class Teacher:
         self.availability = availability
 
     @staticmethod
-    def from_json(json_string):
+    def from_json(json_string: str) -> 'Teacher':
         REQUIRED_FIELDS = ['id', 'availability']
         data = json.loads(json_string)
         missing = [field for field in REQUIRED_FIELDS if field not in data]
@@ -26,5 +26,5 @@ class Teacher:
             availability = avail
         )
     
-    def book_time_slot(self, day: str, slot: int, mask: list[int]) -> bool:
+    def book_time_slot(self, day: int, slot: int, mask: list[int]) -> bool:
         return self.availability.remove(day, slot, mask)

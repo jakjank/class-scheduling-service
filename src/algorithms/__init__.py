@@ -1,3 +1,5 @@
+from .utils import covers, get_all_placements_for_group
 from .random_solve import random_solve
 from .ordered_groups_solve import ordered_groups_solve
 from .rating_function_solve import rating_function_solve
+from .deep_ordered_groups_solve import deep_ordered_groups_solve

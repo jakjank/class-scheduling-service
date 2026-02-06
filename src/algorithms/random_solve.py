@@ -1,5 +1,6 @@
-from src import get_all_placements_for_group, get_random_allocation
-from src import Problem, Response
+from .utils import get_all_placements_for_group
+from src import Problem
+from src.communication import Response, Issue
 import random
 import copy
 
@@ -32,11 +33,11 @@ def random_solve(prob: Problem) -> Response:
 
         if len(placements) == 0:
             # not very useful msg
-            return Response(1, "Could not find placement for group with id=" + str(g.id) + ". (RANDOM_SOLVE)", prob.allocations)
+            return Response(False, [Issue("group", g.id, f"Could not find placement for group with id={g.id} (RANODM_SOLVE)")], prob.allocations)
         
         # add random placement to soulution and delete availabilities
-        random_allocation = get_random_allocation(placements)
+        random_allocation = random.choice(placements)
         if not prob.add_allocation_and_update_availability(random_allocation):
-            return Response(1, "Unexpected error while looking for solution", [])
+            return Response(False, [Issue("other", 0, "Unexpected error while looking for solution")], [])
 
-    return Response(0, "Success", prob.allocations)
+    return Response(True, [], prob.allocations)
