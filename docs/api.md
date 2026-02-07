@@ -6,7 +6,7 @@ The scheduler offers two HTTP endpoints to which you can POST your requests:
 * `/schedule` - Accepts a scheduling problem and returns a JSON response with the solution or error information.
 * `/check` - Accepts a scheduling problem and returns a JSON response with confirmation or deny of correctness of sent assigments
 
-## Request schema
+## Query schema
 
 The request, endpoint does not matter, should be a JSON object with the following structure:
 

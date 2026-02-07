@@ -1,6 +1,6 @@
 # Informal Definition of Timetable Correctness
 
-The set of group assigments to time slots and room(s) (timetable) for a given *Request* is correct if all of the below points are met:
+The set of group assigments to time slots and room(s) (timetable) for a given *Query* is correct if all of the below points are met:
 
 * The capacity of each room in which a given group's classes are held is sufficient to accommodate the entire group
 * Each group has assigned proper amount of rooms

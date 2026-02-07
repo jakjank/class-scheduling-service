@@ -16,10 +16,10 @@ Serves as an interface to the *algorithms*. First it ensures user defined alloca
 
 ```mermaid
 sequenceDiagram
-    User->>main.py: Request
+    User->>main.py: Query
     main.py->>parser.py: Parse
     Note over parser.py: parse and validate
-    parser.py->>main.py: Parsed Request
+    parser.py->>main.py: Parsed Query
     main.py->>solver.py: problem & alg. name
     Note over solver.py: do precheck
     solver.py->>algorithm:
@@ -34,10 +34,10 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    User->>main.py: Request
+    User->>main.py: Query
     main.py->>parser.py: Parse
     Note over parser.py: parse and validate
-    parser.py->>main.py: Parsed Request
+    parser.py->>main.py: Parsed Query
     main.py->>Problem: check()
     Note over Problem: check if groups are assigned correctly
     Problem->>main.py: Message

@@ -61,7 +61,7 @@ The scheduler exposes two endpoints:
 - POST /schedule — generate a timetable
 - POST /check — verify a timetable
 
-Requests and responses are JSON-based.
+Queries and responses are JSON-based.
 
 See detailed API documentation:
 - [API Reference](docs/api.md)
