@@ -26,7 +26,7 @@ sequenceDiagram
     Note over algorithm: Schedule groups
     algorithm->>solver.py:
     Note over solver.py: do postcheck
-    solver.py->>main.py: solution
+    solver.py->>main.py: Response
     main.py->>User: Response
 ```
 
@@ -40,6 +40,6 @@ sequenceDiagram
     parser.py->>main.py: Parsed Query
     main.py->>Problem: check()
     Note over Problem: check if groups are assigned correctly
-    Problem->>main.py: Message
+    Problem->>main.py: List of Issues
     main.py->>User: Response
 ```
